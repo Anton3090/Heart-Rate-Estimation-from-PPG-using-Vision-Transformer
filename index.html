@@ -1,0 +1,544 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>PPG Heart Rate Estimation</title>
+    <style>
+        * {
+            margin: 0;
+            padding: 0;
+            box-sizing: border-box;
+        }
+
+        body {
+            font-family: 'Segoe UI', Tahoma, Geneva, Verdana, sans-serif;
+            background: linear-gradient(135deg, #667eea 0%, #764ba2 100%);
+            min-height: 100vh;
+            padding: 20px;
+        }
+
+        .container {
+            max-width: 1000px;
+            margin: 0 auto;
+            background: white;
+            border-radius: 20px;
+            box-shadow: 0 20px 60px rgba(0,0,0,0.3);
+            overflow: hidden;
+        }
+
+        header {
+            background: linear-gradient(135deg, #2C3E50, #34495E);
+            color: white;
+            padding: 40px;
+            text-align: center;
+        }
+
+        header h1 {
+            font-size: 2.5em;
+            margin-bottom: 10px;
+        }
+
+        header p {
+            font-size: 1.1em;
+            opacity: 0.9;
+        }
+
+        .content {
+            padding: 40px;
+        }
+
+        .input-section {
+            background: #f8f9fa;
+            padding: 30px;
+            border-radius: 15px;
+            margin-bottom: 30px;
+        }
+
+        .input-section h2 {
+            color: #2C3E50;
+            margin-bottom: 20px;
+        }
+
+        .input-group {
+            margin-bottom: 20px;
+        }
+
+        label {
+            display: block;
+            font-weight: 600;
+            margin-bottom: 8px;
+            color: #34495E;
+        }
+
+        input, textarea {
+            width: 100%;
+            padding: 12px;
+            border: 2px solid #ddd;
+            border-radius: 8px;
+            font-size: 1em;
+            transition: border-color 0.3s;
+        }
+
+        input:focus, textarea:focus {
+            outline: none;
+            border-color: #667eea;
+        }
+
+        textarea {
+            resize: vertical;
+            min-height: 100px;
+            font-family: monospace;
+        }
+
+        .button-group {
+            display: flex;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        button {
+            flex: 1;
+            padding: 15px 30px;
+            font-size: 1.1em;
+            font-weight: 600;
+            border: none;
+            border-radius: 30px;
+            cursor: pointer;
+            transition: all 0.3s;
+            min-width: 150px;
+        }
+
+        .btn-primary {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+        }
+
+        .btn-primary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(102, 126, 234, 0.5);
+        }
+
+        .btn-secondary {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+            color: white;
+        }
+
+        .btn-secondary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(56, 239, 125, 0.5);
+        }
+
+        .btn-tertiary {
+            background: linear-gradient(135deg, #fc4a1a, #f7b733);
+            color: white;
+        }
+
+        .btn-tertiary:hover {
+            transform: translateY(-2px);
+            box-shadow: 0 10px 25px rgba(252, 74, 26, 0.5);
+        }
+
+        button:disabled {
+            opacity: 0.6;
+            cursor: not-allowed;
+            transform: none !important;
+        }
+
+        .loading {
+            text-align: center;
+            padding: 30px;
+            display: none;
+        }
+
+        .spinner {
+            border: 4px solid #f3f3f3;
+            border-top: 4px solid #667eea;
+            border-radius: 50%;
+            width: 50px;
+            height: 50px;
+            animation: spin 1s linear infinite;
+            margin: 0 auto 20px;
+        }
+
+        @keyframes spin {
+            0% { transform: rotate(0deg); }
+            100% { transform: rotate(360deg); }
+        }
+
+        .results {
+            display: none;
+        }
+
+        .result-cards {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(200px, 1fr));
+            gap: 20px;
+            margin-bottom: 30px;
+        }
+
+        .result-card {
+            background: linear-gradient(135deg, #667eea, #764ba2);
+            color: white;
+            padding: 25px;
+            border-radius: 15px;
+            text-align: center;
+            box-shadow: 0 5px 15px rgba(0,0,0,0.1);
+        }
+
+        .result-card.secondary {
+            background: linear-gradient(135deg, #11998e, #38ef7d);
+        }
+
+        .result-card h3 {
+            font-size: 0.9em;
+            opacity: 0.9;
+            margin-bottom: 10px;
+            text-transform: uppercase;
+        }
+
+        .result-value {
+            font-size: 2.5em;
+            font-weight: bold;
+            margin: 10px 0;
+        }
+
+        .result-unit {
+            font-size: 0.5em;
+            opacity: 0.8;
+        }
+
+        .alert {
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+        }
+
+        .alert-success {
+            background: #d4edda;
+            border-left: 5px solid #28a745;
+            color: #155724;
+        }
+
+        .alert-info {
+            background: #d1ecf1;
+            border-left: 5px solid #17a2b8;
+            color: #0c5460;
+        }
+
+        .alert-warning {
+            background: #fff3cd;
+            border-left: 5px solid #ffc107;
+            color: #856404;
+        }
+
+        .alert-error {
+            background: #f8d7da;
+            border-left: 5px solid #dc3545;
+            color: #721c24;
+        }
+
+        .plot-container {
+            margin-top: 30px;
+        }
+
+        .plot-container img {
+            width: 100%;
+            border-radius: 15px;
+            box-shadow: 0 5px 20px rgba(0,0,0,0.1);
+        }
+
+        .info-grid {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(250px, 1fr));
+            gap: 15px;
+            margin: 20px 0;
+        }
+
+        .info-item {
+            background: #f8f9fa;
+            padding: 15px;
+            border-radius: 10px;
+            border-left: 4px solid #667eea;
+        }
+
+        .info-item strong {
+            color: #2C3E50;
+        }
+
+        footer {
+            background: #2C3E50;
+            color: white;
+            text-align: center;
+            padding: 20px;
+        }
+
+        @media (max-width: 768px) {
+            .button-group {
+                flex-direction: column;
+            }
+
+            button {
+                width: 100%;
+            }
+
+            header h1 {
+                font-size: 1.8em;
+            }
+        }
+    </style>
+</head>
+<body>
+    <div class="container">
+        <header>
+            <h1>💓 PPG Heart Rate Estimation</h1>
+            <p>AI-Powered Heart Rate Analysis using Vision Transformer</p>
+        </header>
+
+        <div class="content">
+            <!-- Input Section -->
+            <div class="input-section">
+                <h2>📊 Input PPG Signal Data</h2>
+                
+                <div class="input-group">
+                    <label for="ppgData">PPG Signal (comma-separated values)</label>
+                    <textarea id="ppgData" placeholder="Enter PPG values: 1.2, 1.5, 1.3, ... (or use demo buttons)"></textarea>
+                </div>
+
+                <div class="input-group">
+                    <label for="samplingRate">Sampling Rate (Hz)</label>
+                    <input type="number" id="samplingRate" value="125" min="50" max="1000">
+                </div>
+
+                <div class="button-group">
+                    <button class="btn-primary" onclick="analyzeSignal()">
+                        🔍 Analyze Signal
+                    </button>
+                    <button class="btn-secondary" onclick="loadDemo(75)">
+                        🎮 Demo (75 bpm)
+                    </button>
+                    <button class="btn-tertiary" onclick="loadDemo(90)">
+                        🎮 Demo (90 bpm)
+                    </button>
+                </div>
+            </div>
+
+            <!-- Loading -->
+            <div class="loading" id="loading">
+                <div class="spinner"></div>
+                <p>Analyzing PPG signal... Please wait...</p>
+            </div>
+
+            <!-- Results Section -->
+            <div class="results" id="results">
+                <div id="alertContainer"></div>
+
+                <div class="result-cards">
+                    <div class="result-card">
+                        <h3>Heart Rate (Model)</h3>
+                        <div class="result-value">
+                            <span id="hrModel">--</span>
+                            <span class="result-unit">bpm</span>
+                        </div>
+                    </div>
+
+                    <div class="result-card secondary" id="hrPeaksCard" style="display: none;">
+                        <h3>Heart Rate (Peaks)</h3>
+                        <div class="result-value">
+                            <span id="hrPeaks">--</span>
+                            <span class="result-unit">bpm</span>
+                        </div>
+                    </div>
+
+                    <div class="result-card">
+                        <h3>Confidence</h3>
+                        <div class="result-value">
+                            <span id="confidence">--</span>
+                            <span class="result-unit">%</span>
+                        </div>
+                    </div>
+
+                    <div class="result-card secondary">
+                        <h3>Signal Quality</h3>
+                        <div class="result-value">
+                            <span id="quality">--</span>
+                        </div>
+                    </div>
+                </div>
+
+                <div class="info-grid">
+                    <div class="info-item">
+                        <strong>Signal Duration:</strong> <span id="signalLength">--</span> seconds
+                    </div>
+                    <div class="info-item">
+                        <strong>Sampling Rate:</strong> <span id="sampleRate">--</span> Hz
+                    </div>
+                    <div class="info-item">
+                        <strong>Category:</strong> <span id="category">--</span>
+                    </div>
+                </div>
+
+                <div class="plot-container">
+                    <h3>📈 Signal Analysis Visualization</h3>
+                    <img id="plotImage" src="" alt="PPG Analysis Plot">
+                </div>
+            </div>
+        </div>
+
+        <footer>
+            <p>Powered by Vision Transformer | PyTorch | Flask</p>
+        </footer>
+    </div>
+
+    <script>
+        async function analyzeSignal() {
+            const ppgText = document.getElementById('ppgData').value.trim();
+            const samplingRate = parseInt(document.getElementById('samplingRate').value);
+
+            if (!ppgText) {
+                alert('Please enter PPG signal data or use a demo button');
+                return;
+            }
+
+            // Parse PPG data
+            let ppgData;
+            try {
+                ppgData = ppgText.split(',').map(x => parseFloat(x.trim())).filter(x => !isNaN(x));
+                if (ppgData.length === 0) {
+                    throw new Error('No valid numbers found');
+                }
+            } catch (e) {
+                alert('Invalid PPG data format. Please enter comma-separated numbers.');
+                return;
+            }
+
+            // Show loading
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        ppg: ppgData,
+                        sampling_rate: samplingRate
+                    })
+                });
+
+                const result = await response.json();
+
+                // Hide loading
+                document.getElementById('loading').style.display = 'none';
+
+                if (result.success) {
+                    displayResults(result);
+                } else {
+                    displayError(result.error);
+                }
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                displayError('Network error: ' + error.message);
+            }
+        }
+
+        async function loadDemo(targetHr) {
+            document.getElementById('ppgData').value = 'Loading demo...';
+            document.getElementById('loading').style.display = 'block';
+            document.getElementById('results').style.display = 'none';
+
+            try {
+                const response = await fetch('/analyze', {
+                    method: 'POST',
+                    headers: {
+                        'Content-Type': 'application/json',
+                    },
+                    body: JSON.stringify({
+                        demo: true,
+                        demo_hr: targetHr
+                    })
+                });
+
+                const result = await response.json();
+                document.getElementById('loading').style.display = 'none';
+
+                if (result.success) {
+                    document.getElementById('ppgData').value = '(Demo signal generated)';
+                    displayResults(result);
+                } else {
+                    displayError(result.error);
+                }
+            } catch (error) {
+                document.getElementById('loading').style.display = 'none';
+                displayError('Network error: ' + error.message);
+            }
+        }
+
+        function displayResults(result) {
+            // Show results section
+            document.getElementById('results').style.display = 'block';
+
+            // Update values
+            document.getElementById('hrModel').textContent = result.hr_model;
+            
+            if (result.hr_peaks) {
+                document.getElementById('hrPeaks').textContent = result.hr_peaks;
+                document.getElementById('hrPeaksCard').style.display = 'block';
+            } else {
+                document.getElementById('hrPeaksCard').style.display = 'none';
+            }
+
+            document.getElementById('confidence').textContent = result.confidence;
+            document.getElementById('quality').textContent = result.quality;
+            document.getElementById('signalLength').textContent = result.signal_length;
+            document.getElementById('sampleRate').textContent = result.sampling_rate;
+            document.getElementById('category').textContent = result.category;
+
+            // Update plot
+            document.getElementById('plotImage').src = 'data:image/png;base64,' + result.plot;
+
+            // Show alert
+            const alertClass = 'alert-' + result.category_class;
+            let alertMessage = '';
+
+            if (result.category === 'Normal') {
+                alertMessage = '<strong>✅ Normal Range:</strong> Heart rate is within the normal resting range (60-100 bpm).';
+            } else if (result.category === 'Bradycardia') {
+                alertMessage = '<strong>ℹ️ Bradycardia:</strong> Heart rate is below normal resting range. This may be normal for athletes.';
+            } else if (result.category === 'Tachycardia') {
+                alertMessage = '<strong>⚠️ Tachycardia:</strong> Heart rate is above normal resting range.';
+            }
+
+            if (result.confidence < 50) {
+                alertMessage += '<br><br><strong>⚠️ Low Confidence:</strong> Signal quality is lower than optimal.';
+            }
+
+            document.getElementById('alertContainer').innerHTML = 
+                `<div class="alert ${alertClass}">${alertMessage}</div>`;
+
+            // Scroll to results
+            document.getElementById('results').scrollIntoView({ behavior: 'smooth' });
+        }
+
+        function displayError(errorMessage) {
+            document.getElementById('results').style.display = 'block';
+            document.getElementById('alertContainer').innerHTML = 
+                `<div class="alert alert-error"><strong>❌ Error:</strong> ${errorMessage}</div>`;
+            
+            // Hide result cards and plot
+            document.querySelectorAll('.result-cards, .info-grid, .plot-container').forEach(el => {
+                el.style.display = 'none';
+            });
+        }
+
+        // Allow Enter key to submit
+        document.getElementById('ppgData').addEventListener('keypress', function(e) {
+            if (e.key === 'Enter' && e.ctrlKey) {
+                analyzeSignal();
+            }
+        });
+    </script>
+</body>
+</html>
